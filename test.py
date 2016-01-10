@@ -9,6 +9,15 @@ sys.path.extend(['.', '..'])
 
 from pycparser.pycparser import parse_file, c_parser, mermaid_generator
 
+def print_list_tree(lst, level=0):
+    for l in lst[0:]:
+        if type(l) is list:
+            print_list_tree(l, level + 1)
+        else:
+            if (level >= 0):
+                print("|   " * level)
+                print("|-- ")
+            print(str(l).strip())
 
 def translate_to_c(filename):
     """ Simply use the c_generator module to emit a parsed AST.
@@ -22,7 +31,7 @@ def translate_to_c(filename):
 
     #ast.show()
     generator = mermaid_generator.MermaidGenerator()
-    print(generator.visit(ast))
+    print_list_tree(generator.visit(ast))
 
 #------------------------------------------------------------------------------
 if __name__ == "__main__":
