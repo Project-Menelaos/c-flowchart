@@ -10,7 +10,7 @@ sys.path.extend(['.', '..'])
 from pycparser.pycparser import parse_file, c_parser, mermaid_generator
 
 def print_list_tree(lst, level=0):
-    for l in lst[0:]:
+    for l in lst:
         if type(l) is list:
             print_list_tree(l, level + 1)
         else:
@@ -34,6 +34,8 @@ def translate_to_c(filename):
     generator.visit(ast)
     #print_list_tree(generator.visit(ast))
     a = generator.visit_stack
+    #for i in range(len(a), 2):
+    #    a[i], a[i+1] = a[i+1], a[i]
     print_list_tree(a)
 
 #------------------------------------------------------------------------------
