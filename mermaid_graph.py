@@ -5,27 +5,27 @@ from pycparser.pycparser import parse_file, c_parser, mermaid_generator
 
 def node_type(node):
     if is_if_branch(node) or is_root(tree):
-        return node_str(node)
+        return '' # node_str(node)
     else:
-        return str(node.content).strip().split('_')[1]
+        return node.content.strip().split('_')[1]
 
 def node_id(node):
     return node.content.split('[')[0]
 
 def node_str(node):
-    return ''.join(node.content.split('[')[1:])[1:-2]
+    return node.content[len(node.content.split('[')[0])+2:-3].strip()
 
 def is_if_true_branch(node):
-    return node_str(node) == "If-True"
+    return (node_str(node) == "If-True")
 
 def is_if_false_branch(node):
-    return node_str(node) == "If-False"
+    return (node_str(node) == "If-False")
 
 def is_if_branch(node):
-    return is_if_false_branch(node) or is_if_true_branch(node)
+    return (is_if_false_branch(node) or is_if_true_branch(node))
 
 def is_root(node):
-    return node.content == "root"
+    return (node.content == "root")
 
 def generate_call_tree(filename):
     """ Simply use the c_generator module to emit a parsed AST.
@@ -50,11 +50,20 @@ def print_nodes(tree):
         print_nodes(i)
 
 def print_links(tree, last_node):
-    # s = str(tree.content).strip()
-    # if is_if_branch(tree):
-    #     print(s)
-    # for i in tree.children:
-    #     print_nodes(i)
+    if node_type(tree) == "FuncDef" and len(tree.children) > 0:
+        print("%% FuncDef start")
+        print("%s --> %s" % (node_id(tree), node_id(tree.children[0])))
+    print("Type: " + node_type(tree) + " branch?" + str(is_if_branch(tree)) + " root?" + str(is_root(tree)))
+    if len(tree.children) == 0:
+        pass
+    elif len(tree.children) == 1:
+        pass
+    else:
+        for i in range(1, len(tree.children)):
+            if not is_if_branch(tree) and not is_root(tree):
+                print("%s --> %s" % (node_id(tree.children[i - 1]), node_id(tree.children[i])))
+    for i in tree.children:
+        print_links(i, tree)
     pass
 
 def print_mermaid_graph(tree):
