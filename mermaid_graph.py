@@ -4,8 +4,8 @@ import sys, os
 from pycparser.pycparser import parse_file, c_parser, mermaid_generator
 
 def node_type(node):
-    if is_if_branch(node) or is_root(tree):
-        return '' # node_str(node)
+    if is_if_branch(node) or is_root(node):
+        return 'none' # node_str(node)
     else:
         return node.content.strip().split('_')[1]
 
@@ -53,7 +53,7 @@ def print_links(tree, last_node):
     if node_type(tree) == "FuncDef" and len(tree.children) > 0:
         print("%% FuncDef start")
         print("%s --> %s" % (node_id(tree), node_id(tree.children[0])))
-    print("Type: " + node_type(tree) + " branch?" + str(is_if_branch(tree)) + " root?" + str(is_root(tree)))
+    print(r"%%Type: " + node_type(tree) + " branch?" + str(is_if_branch(tree)) + " root?" + str(is_root(tree)))
     if len(tree.children) == 0:
         pass
     elif len(tree.children) == 1:
