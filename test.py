@@ -9,17 +9,15 @@ sys.path.extend(['.', '..'])
 
 from pycparser.pycparser import parse_file, c_parser, mermaid_generator
 
-def print_list_tree(lst, level=0):
-    for l in lst:
-        if type(l) is list:
-            print_list_tree(l, level + 1)
-        else:
-            if (level >= 0):
-                print("|   " * level, end="")
-                print("|-- ", end="")
-            print(str(l).strip())
+def print_call_tree(tree, level=0):
+    if (level > 0):
+        print("|   " * (level - 1), end="")
+        print("`-- ", end="")
+    print(str(tree.content).strip())
+    for i in tree.children:
+        print_call_tree(i, level + 1)
 
-def translate_to_c(filename):
+def display_call_tree(filename):
     """ Simply use the c_generator module to emit a parsed AST.
     """
     ast = parse_file(filename
@@ -31,16 +29,12 @@ def translate_to_c(filename):
 
     #ast.show()
     generator = mermaid_generator.MermaidGenerator()
-    generator.visit(ast)
-    #print_list_tree(generator.visit(ast))
-    a = generator.visit_stack
-    #for i in range(len(a), 2):
-    #    a[i], a[i+1] = a[i+1], a[i]
-    print_list_tree(a)
+    tree = generator.get_call_tree(ast)
+    print_call_tree(tree)
 
 #------------------------------------------------------------------------------
 if __name__ == "__main__":
     if len(sys.argv) > 1:
-        translate_to_c(sys.argv[1])
+        display_call_tree(sys.argv[1])
     else:
         print("Please provide a filename as argument")
