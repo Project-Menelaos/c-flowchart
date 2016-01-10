@@ -17,7 +17,7 @@ def translate_to_c(filename):
             , clean_code=True, clean_comments=True, clean_macros=False
             , use_cpp=True
             , cpp_path='clang'
-            , cpp_args=['-E', '-Wno-macro-redefined', r'-I/Users/james/Copy/Code/Menelaos/menelaos-test-project/testcode3/JStudentManager/JStudentManager', '-I'+os.path.dirname(os.path.abspath(__file__))+r'/pycparser/utils/fake_libc_include', '-nostdinc']
+            , cpp_args=['-E', '-Wno-macro-redefined', '-I'+os.path.dirname(os.path.abspath(__file__))+r'/pycparser/utils/fake_libc_include', '-nostdinc']
             )
 
     #ast.show()
