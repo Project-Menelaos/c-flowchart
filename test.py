@@ -1,12 +1,6 @@
 #!/usr/bin/env python3
 
 import sys, os
-
-# This is not required if you've installed pycparser into
-# your site-packages/ with setup.py
-#
-sys.path.extend(['.', '..'])
-
 from pycparser.pycparser import parse_file, c_parser, mermaid_generator
 
 def print_call_tree(tree, level=0):
