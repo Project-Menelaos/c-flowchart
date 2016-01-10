@@ -15,8 +15,8 @@ def print_list_tree(lst, level=0):
             print_list_tree(l, level + 1)
         else:
             if (level >= 0):
-                print("|   " * level)
-                print("|-- ")
+                print("|   " * level, end="")
+                print("|-- ", end="")
             print(str(l).strip())
 
 def translate_to_c(filename):
@@ -31,7 +31,10 @@ def translate_to_c(filename):
 
     #ast.show()
     generator = mermaid_generator.MermaidGenerator()
-    print_list_tree(generator.visit(ast))
+    generator.visit(ast)
+    #print_list_tree(generator.visit(ast))
+    a = generator.visit_stack
+    print_list_tree(a)
 
 #------------------------------------------------------------------------------
 if __name__ == "__main__":
