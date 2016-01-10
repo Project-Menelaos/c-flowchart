@@ -7,7 +7,7 @@ import sys, os
 #
 sys.path.extend(['.', '..'])
 
-from pycparser.pycparser import parse_file, c_parser, c_generator
+from pycparser.pycparser import parse_file, c_parser, mermaid_generator
 
 
 def translate_to_c(filename):
@@ -20,13 +20,12 @@ def translate_to_c(filename):
             , cpp_args=['-E', '-Wno-macro-redefined', r'-I/Users/james/Copy/Code/Menelaos/menelaos-test-project/testcode3/JStudentManager/JStudentManager', '-I'+os.path.dirname(os.path.abspath(__file__))+r'/pycparser/utils/fake_libc_include', '-nostdinc']
             )
 
-    ast.show()
-    #generator = c_generator.CGenerator()
-    #print(generator.visit(ast))
+    #ast.show()
+    generator = mermaid_generator.MermaidGenerator()
+    print(generator.visit(ast))
 
 #------------------------------------------------------------------------------
 if __name__ == "__main__":
-    #_zz_test_translate()
     if len(sys.argv) > 1:
         translate_to_c(sys.argv[1])
     else:
