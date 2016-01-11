@@ -4,6 +4,8 @@ import sys, os, ntpath
 from pycparser.pycparser import parse_file, c_parser, mermaid_generator
 
 have_end_types = ("If", "FuncDef", "while")
+have_multi_cond_types = ("If")
+multi_cond_subtypes = ("If-True", "If-False")
 
 def generate_end_id(node):
     if node.type == "If":
@@ -95,10 +97,13 @@ def print_nodes(tree):
     for i in tree.children:
         print_nodes(i)
 
-def iterative_print_links(tree, last_node, call_stack=[], function_end=None):
+def iterative_print_links(tree, last_node, cond=None, call_stack=[], function_end=None):
     if len(tree.children) > 0:
         # print("%% Iterate over normal stmt")
-        link(tree, tree.children[0])
+        if node_type(tree) in multi_cond_subtypes:
+            link(last_node, tree.children[0], cond=cond)
+        else:
+            link(tree, tree.children[0], cond=cond)
         for i in range(1, len(tree.children)):
             if tree.children[i - 1].type not in have_end_types:
                 link(tree.children[i - 1], tree.children[i])
@@ -141,18 +146,14 @@ def print_links(tree, last_node, call_stack=[], function_end=None):
         if_end_node_id = generate_end_id(tree)
         # If-True
         print('%% If-True')
-        link(tree, tree.children[0].children[0], "True")
-        for i in tree.children[0].children:
-            print_links(i, tree, call_stack=call_stack)
+        iterative_print_links(tree.children[0], tree, "True")
         if_true_end_node = search_last_call(tree.children[0])
         link(if_true_end_node, if_end_node_id)
 
         # If-False
         print('%% If-False')
         if len(tree.children) > 1:  # we got a else
-            link(tree, tree.children[1].children[0], "False")
-            for i in tree.children[1].children:
-                print_links(i, tree, call_stack=call_stack)
+            iterative_print_links(tree.children[1], tree, "False")
             if_false_end_node = search_last_call(tree.children[1])
             link(if_false_end_node, if_end_node_id)
         else:   # no else
