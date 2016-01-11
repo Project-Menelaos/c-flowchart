@@ -5,7 +5,7 @@ from pycparser.pycparser import parse_file, c_parser, mermaid_generator
 
 def node_type(node):
     if is_if_branch(node) or is_root(node):
-        return 'none' # node_str(node)
+        return node.type
     else:
         return node.content.strip().split('_')[1]
 
@@ -16,16 +16,16 @@ def node_str(node):
     return node.content[len(node_id(node))+2:-3].strip()
 
 def is_if_true_branch(node):
-    return (node_str(node) == "If-True")
+    return (node.type == "If-True")
 
 def is_if_false_branch(node):
-    return (node_str(node) == "If-False")
+    return (node.type == "If-False")
 
 def is_if_branch(node):
     return (is_if_false_branch(node) or is_if_true_branch(node))
 
 def is_root(node):
-    return (node.content == "root")
+    return (node.type == "root")
 
 def generate_call_tree(filename):
     """ Simply use the c_generator module to emit a parsed AST.
@@ -58,53 +58,50 @@ def print_nodes(tree):
         print_nodes(i)
 
 def print_links(tree, last_node):
+    if node_type(tree) == "root":
+        for i in tree.children:
+            print_links(i, tree)
+        return
+
     if node_type(tree) == "FuncDef" and len(tree.children) > 0:
         print("%% FuncDef start")
-        #print("subgraph " + node_id(tree))
         link(tree, tree.children[0])
+        for i in range(1, len(tree.children)):
+            link(tree.children[i - 1], tree.children[i])
         for i in tree.children:
             print_links(i, tree)
-        #print("end")
-    # print(r"%%Type: " + node_type(tree) + " branch?" + str(is_if_branch(tree)) + " root?" + str(is_root(tree)))
-    # else:
+        print("%% FuncDef end")
+        return
+
     if node_type(tree) == "If":
-        print("%% If start")
-        if (len(tree.children) > 0):
-            link(tree, tree.children[0].children[0], cond="True")
-            for i in tree.children[0].children:
-                print_links(i, tree)
+        tree.if_end = []
 
-            endnode = tree.children[0]
-            while(len(endnode.children) > 0):
-                endnode = endnode.children[-1]
-            tree.if_end = [endnode]
+        # If-True
+        print('%% If-True')
+        link(tree, tree.children[0].children[0])
+        for i in tree.children[0].children:
+            a = print_links(i, tree)
+            # if a is mermaid_generator.MermaidGenerator.H:
+            #     tree.if_end.append(a)
 
-        if (len(tree.children) > 1):
-            link(tree, tree.children[1].children[0], cond="False")
+        # If-False
+        print('%% If-False')
+        if len(tree.children) > 1:
+            link(tree, tree.children[1].children[0])
             for i in tree.children[1].children:
-                print_links(i, tree)
+                a = print_links(i, tree)
 
-            endnode = tree.children[1]
-            while(len(endnode.children) > 0):
-                endnode = endnode.children[-1]
-            tree.if_end.append(endnode)
+        return
 
-    else:
-        if node_type(last_node) == "If" and hasattr(last_node, 'if_end'):
-            for i in last_node.if_end:
-                link(i, tree)
-            print("%% If end")
-        if len(tree.children) == 0:
-            pass
-        elif len(tree.children) == 1:
-            link(tree, tree.children[0])
-        else:
-            for i in range(1, len(tree.children)):
-                if not is_if_branch(tree) and not is_root(tree):
-                    link(tree.children[i - 1], tree.children[i])
+    # normal
+    if len(tree.children) > 0:
+        print("%% Iterate over normal stmt")
+        link(tree, tree.children[0])
+        for i in range(1, len(tree.children)):
+            link(tree.children[i - 1], tree.children[i])
         for i in tree.children:
             print_links(i, tree)
-        pass
+
 
 def print_mermaid_graph(tree):
     print("graph TB")
