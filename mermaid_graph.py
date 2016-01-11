@@ -77,10 +77,10 @@ def print_links(tree, last_node, force_connected_end_to=None):
             print_links(i, tree)
         return
 
-    if node_type(tree) == "FuncDef" and len(tree.children) > 0:
+    elif node_type(tree) == "FuncDef" and len(tree.children) > 0:
         print("%% FuncDef start")
-        link(tree, tree.children[0])
         # let them happen as normal!
+        # link(tree, tree.children[0])
         # for i in range(1, len(tree.children)):
         #     if tree.children[i - 1].type not in ("If"):
         #         link(tree.children[i - 1], tree.children[i])
@@ -89,7 +89,7 @@ def print_links(tree, last_node, force_connected_end_to=None):
         # print("%% FuncDef end")
         # return
 
-    if node_type(tree) == "If":
+    elif node_type(tree) == "If":
         # tree.if_end = []
         if_end_node_id = generate_if_end_id(tree)
         # If-True
@@ -107,15 +107,17 @@ def print_links(tree, last_node, force_connected_end_to=None):
 
         # If-False
         print('%% If-False')
-        if len(tree.children) > 1:
+        if len(tree.children) > 1:  # we got a else
             link(tree, tree.children[1].children[0], "False")
             for i in tree.children[1].children:
                 print_links(i, tree)
 
-            if_false_end_node = tree.children[0]
+            if_false_end_node = tree.children[1]
             while len(if_false_end_node.children) > 0:
                 if_false_end_node = if_false_end_node.children[-1]
             link(if_false_end_node, if_end_node_id)
+        else:   # no else
+            link(tree, if_end_node_id, "False")
 
         return
 
