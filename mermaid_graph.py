@@ -10,7 +10,26 @@ connect_to_start_types = ("Continue")
 connect_to_end_types = ("Break")
 force_function_end_types = ("Return")
 
+current_func = None
+call_stack = []
+
+def call_stack_append(node):
+    if len(call_stack) == 0 or node not in call_stack:
+        call_stack.append(node)
+
+def call_stack_pop(node=None):
+    if node == None:
+        return call_stack.pop()
+    else:
+        if node not in call_stack:
+            return
+        else:
+            while(call_stack[-1] != node):
+                call_stack.pop()
+            return call_stack.pop()
+
 def generate_end_id(node):
+    if node == None: return
     if node.end_id != None:
         return node.end_id
     if node.type == "If":
@@ -26,6 +45,7 @@ def generate_end_id(node):
     return node.end_id
 
 def generate_end_node_content(node):
+    if node == None: return
     if node.end_content != None:
         return node.end_content
     if node.type == "If":
@@ -41,14 +61,23 @@ def generate_end_node_content(node):
     return node.end_content
 
 def node_type(node):
+    if node == None: return "None"
     if is_if_branch(node) or is_root(node):
         return node.type
     elif type(node) is str:
-        return '_'.join(node.strip().split('_')[1:-1])
+        string = node
     else:
-        return '_'.join(node.content.strip().split('_')[1:-1])
+        string = node.content
+
+    a = string.strip().split('_')
+    try:
+        int(a[2])
+        return a[1]
+    except:
+        return '_'.join(a[1:2])
 
 def node_id(node):
+    if node == None: return "None"
     return node.content.split('[')[0].split('(')[0].split('{')[0]
 
 def node_surround(node):
@@ -58,7 +87,10 @@ def node_surround(node):
         return None
 
 def node_str(node):
-    return node.content[len(node_id(node))+2:-3].strip()
+    try:
+        return node.content[len(node_id(node))+2:-3].strip()
+    except:
+        return node
 
 def is_if_true_branch(node):
     try:
@@ -115,6 +147,7 @@ def link(node1, node2, cond=None, filter_loop=True):
         print("%s -- %s --> %s"% (node_1_id, cond, node_2_id))
 
 def print_nodes(tree):
+    print("%% [Node]: " + node_id(tree) + " Type: " + node_type(tree) + " Str: " + node_str(tree))
     s = str(tree.content).strip()
     if not is_if_branch(tree) and not is_root(tree):
         print(s)
@@ -123,22 +156,28 @@ def print_nodes(tree):
     for i in tree.children:
         print_nodes(i)
 
-def iterative_print_links(tree, last_node, cond=None, call_stack=[], function_end=None):
+def iterative_print_links(tree, last_node, cond=None, function_end=None):
+    global call_stack
     if len(tree.children) > 0:
         # print("%% Iterate over normal stmt")
+        # (before) --> (current tree)
         if node_type(tree) in multi_cond_subtypes:
             link(last_node, tree.children[0], cond=cond)
         elif node_type(last_node) in have_end_types:
-            link(generate_end_id(last_node), tree.children[0], cond=cond)
+            link(tree.children[0], generate_end_id(last_node), cond=cond)
         else:
             link(tree, tree.children[0], cond=cond)
+
+        # (current tree) --> (current tree)
         for i in range(1, len(tree.children)):
             if (tree.children[i - 1].type not in have_end_types):
                 link(tree.children[i - 1], tree.children[i])
             else:
                 link(generate_end_id(tree.children[i - 1]), tree.children[i])
+
+        # inside every node
         for i in tree.children:
-            print_links(i, tree, call_stack=call_stack, function_end=function_end)
+            print_links(i, tree, function_end=function_end)
 
         # print_links(tree.children[0], tree, call_stack=call_stack, function_end=function_end)
         # for i in range(1, len(tree.children)):
@@ -158,10 +197,16 @@ def search_last_call(node):
             break
         else:
             last_call = last_call.children[-1]
+    print("%% Last call: " + node_str(last_call))
     return last_call
 
-def print_links(tree, last_node, call_stack=[], function_end=None):
+def print_links(tree, last_node, function_end=None):
     # print("%% Got node type: "+str(node_type(tree)))
+    global current_func
+    global call_stack
+
+    for i in call_stack:
+        print("%% [Call Stack] " + node_str(i))
 
     if node_type(tree) == "root":
         for i in tree.children:
@@ -170,22 +215,27 @@ def print_links(tree, last_node, call_stack=[], function_end=None):
 
     elif node_type(tree) == "FuncDef" and len(tree.children) > 0:
         print("%% FuncDef start")
-        call_stack.append(tree)
-        iterative_print_links(tree, last_node, call_stack=call_stack, function_end=tree)
+        call_stack_append(tree)
+        current_func = tree
+        iterative_print_links(tree, last_node, function_end=tree)
         func_last_call_node = search_last_call(tree)
         if node_type(func_last_call_node) not in force_function_end_types:
             link(func_last_call_node, generate_end_id(tree))
         print("%% FuncDef end")
-        call_stack.pop()
+        call_stack_pop(tree)
+        current_func = None
         return
 
     elif node_type(tree) == "If":
-        call_stack.append(tree)
+        call_stack_append(tree)
         if_end_node_id = generate_end_id(tree)
+        print('%% If node: ' + node_id(tree))
         # If-True
         print('%% If-True')
+        # link(tree, tree.children[0].children[0], "Tree")
         iterative_print_links(tree.children[0], tree, "True")
         if_true_end_node = search_last_call(tree.children[0])
+        print('%% If-True->end: ' + node_id(tree) + node_id(if_true_end_node))
         link(if_true_end_node, if_end_node_id)
 
         # If-False
@@ -193,57 +243,62 @@ def print_links(tree, last_node, call_stack=[], function_end=None):
         if len(tree.children) > 1:  # we got a else
             iterative_print_links(tree.children[1], tree, "False")
             if_false_end_node = search_last_call(tree.children[1])
+            print('%% If-False->end: ' + node_id(tree) + node_id(if_false_end_node))
             link(if_false_end_node, if_end_node_id)
         else:   # no else
             link(tree, if_end_node_id, "False")
 
-        call_stack.pop()
-        for i in range(2, len(tree.children)):
-            iterative_print_links(tree.children[i], tree, call_stack=call_stack)
+        call_stack_pop(tree)
+        # for i in range(2, len(tree.children)):
+        #     iterative_print_links(tree.children[i], tree, call_stack=call_stack)
         return
 
     elif node_type(tree) == "While":
-        call_stack.append(tree)
+        call_stack_append(tree)
         print("%% While start")
-        iterative_print_links(tree, last_node, call_stack=call_stack)
+        iterative_print_links(tree, last_node)
         # link(search_last_call(tree), generate_end_id(tree))
         print("%% While end")
-        call_stack.pop()
+        call_stack_pop(tree)
+        link(search_last_call(tree), generate_end_id(tree))
         return
 
     elif node_type(tree) == "For":
-        call_stack.append(tree)
+        call_stack_append(tree)
         print("%% For start")
-        iterative_print_links(tree, last_node, call_stack=call_stack)
+        iterative_print_links(tree, last_node)
         link(search_last_call(tree), generate_end_id(tree))
         link(generate_end_id(tree), tree)
         print("%% For end")
-        call_stack.pop()
+        call_stack_pop(tree)
         return
 
     elif node_type(tree) == "DoWhile_Do":
-        call_stack.append(tree)
+        call_stack_append(tree)
         print("%% DoWhile start")
-        iterative_print_links(tree, last_node, call_stack=call_stack)
+        iterative_print_links(tree, last_node)
         link(generate_end_id(tree), tree)
         print("%% DoWhile end")
-        call_stack.pop()
+        call_stack_pop(tree)
         return
 
     elif node_type(tree) in connect_to_start_types:
         link(tree, call_stack[-1])
-
+        return
 
     elif node_type(tree) in connect_to_end_types:
         link(tree, generate_end_id(call_stack[-1]))
+        return
 
 
     elif node_type(tree) in force_function_end_types:
-        link(tree, generate_end_id(function_end))
-
+        link(tree, generate_end_id(current_func))
+        return
 
     # normal
-    iterative_print_links(tree, last_node, call_stack=call_stack)
+    call_stack_append(tree)
+    iterative_print_links(tree, last_node)
+    call_stack_pop(tree)
 
 
 def print_mermaid_graph(tree):
