@@ -3,19 +3,27 @@
 import sys, os, ntpath
 from pycparser.pycparser import parse_file, c_parser, mermaid_generator
 
-have_end_types = ("If", "FuncDef")
+have_end_types = ("If", "FuncDef", "while")
 
 def generate_end_id(node):
     if node.type == "If":
         return node_id(node).replace("If", "EndIf")
     if node.type == "FuncDef":
         return node_id(node).replace("FuncDef", "EndFuncDef")
+    if node.type == "While":
+        return node_id(node).replace("While", "EndWhile")
 
 def generate_end_node_content(node):
     if node.type == "If":
         return generate_end_id(node) + node_surround(node)[0] + "\"" + "End If" + "\"" + node_surround(node)[1]
     if node.type == "FuncDef":
         return generate_end_id(node) + node_surround(node)[0] + "\"" + "End Function" + "\"" + node_surround(node)[1]
+    if node.type == "While":
+        return generate_end_id(node) + node_surround(node)[0] + "\"" + "End While" + "\"" + node_surround(node)[1]
+
+connect_to_start_types = ("continue")
+connect_to_end_types = ("break")
+force_function_end_types = ("return")
 
 def node_type(node):
     if is_if_branch(node) or is_root(node):
@@ -87,7 +95,7 @@ def print_nodes(tree):
     for i in tree.children:
         print_nodes(i)
 
-def iterative_print_links(tree, last_node):
+def iterative_print_links(tree, last_node, call_stack=[], function_end=None):
     if len(tree.children) > 0:
         # print("%% Iterate over normal stmt")
         link(tree, tree.children[0])
@@ -97,7 +105,7 @@ def iterative_print_links(tree, last_node):
             else:
                 link(generate_end_id(tree.children[i - 1]), tree.children[i])
         for i in tree.children:
-            print_links(i, tree)
+            print_links(i, tree, call_stack=call_stack, function_end=function_end)
 
 def search_last_call(node):
     last_call = node
@@ -111,7 +119,10 @@ def search_last_call(node):
             last_call = last_call.children[-1]
     return last_call
 
-def print_links(tree, last_node, force_connected_end_to=None):
+def print_links(tree, last_node, call_stack=[], function_end=None):
+    if node_type(tree) in have_end_types:
+        call_stack.append(tree)
+
     if node_type(tree) == "root":
         for i in tree.children:
             print_links(i, tree)
@@ -119,7 +130,7 @@ def print_links(tree, last_node, force_connected_end_to=None):
 
     elif node_type(tree) == "FuncDef" and len(tree.children) > 0:
         print("%% FuncDef start")
-        iterative_print_links(tree, last_node)
+        iterative_print_links(tree, last_node, call_stack=call_stack, function_end=tree)
         func_last_call_node = search_last_call(tree)
         link(func_last_call_node, generate_end_id(tree))
         print("%% FuncDef end")
@@ -132,7 +143,7 @@ def print_links(tree, last_node, force_connected_end_to=None):
         print('%% If-True')
         link(tree, tree.children[0].children[0], "True")
         for i in tree.children[0].children:
-            print_links(i, tree)
+            print_links(i, tree, call_stack=call_stack)
         if_true_end_node = search_last_call(tree.children[0])
         link(if_true_end_node, if_end_node_id)
 
@@ -141,7 +152,7 @@ def print_links(tree, last_node, force_connected_end_to=None):
         if len(tree.children) > 1:  # we got a else
             link(tree, tree.children[1].children[0], "False")
             for i in tree.children[1].children:
-                print_links(i, tree)
+                print_links(i, tree, call_stack=call_stack)
             if_false_end_node = search_last_call(tree.children[1])
             link(if_false_end_node, if_end_node_id)
         else:   # no else
@@ -149,8 +160,16 @@ def print_links(tree, last_node, force_connected_end_to=None):
 
         return
 
+    elif node_type(tree) == "While":
+        print("%% While start")
+        iterative_print_links(tree, last_node, call_stack=call_stack)
+        while_last_call_node = search_last_call(tree)
+        link(while_last_call_node, generate_end_id(tree))
+        print("%% While end")
+        return
+
     # normal
-    iterative_print_links(tree, last_node)
+    iterative_print_links(tree, last_node, call_stack=call_stack)
 
 
 def print_mermaid_graph(tree):
