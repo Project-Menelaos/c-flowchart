@@ -114,7 +114,7 @@ int runcommand(char *s)
 	}
 	return EXIT_SUCCESS;
 }
-
+/*
 int loop()
 {
 #ifdef _WIN32
@@ -127,3 +127,4 @@ int loop()
 	} while (gets_s(cmd, 1024)!= NULL && !runcommand(cmd));
 	return EXIT_SUCCESS;
 }
+*/
