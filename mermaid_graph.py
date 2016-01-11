@@ -3,36 +3,42 @@
 import sys, os, ntpath
 from pycparser.pycparser import parse_file, c_parser, mermaid_generator
 
-have_end_types = ("If", "FuncDef", "while", "for", "DoWhile_Do")
+have_end_types = ("If", "FuncDef", "While", "For", "DoWhile_Do")
 have_multi_cond_types = ("If")
 multi_cond_subtypes = ("If-True", "If-False")
-connect_to_start_types = ("continue")
-connect_to_end_types = ("break")
-force_function_end_types = ("return")
+connect_to_start_types = ("Continue")
+connect_to_end_types = ("Break")
+force_function_end_types = ("Return")
 
 def generate_end_id(node):
+    if node.end_id != None:
+        return node.end_id
     if node.type == "If":
-        return node_id(node).replace("If", "EndIf")
+        node.end_id = node_id(node).replace("If", "EndIf")
     if node.type == "FuncDef":
-        return node_id(node).replace("FuncDef", "EndFuncDef")
+        node.end_id = node_id(node).replace("FuncDef", "EndFuncDef")
     if node.type == "While":
-        return node_id(node).replace("While", "EndWhile")
+        node.end_id = node_id(node).replace("While", "EndWhile")
     if node.type == "For":
-        return node_id(node).replace("For", "EndFor")
+        node.end_id = node_id(node).replace("For", "EndFor")
     if node.type == "DoWhile_Do":
-        return node_id(node.children[-1])
+        node.end_id = node_id(node.children[-1])
+    return node.end_id
 
 def generate_end_node_content(node):
+    if node.end_content != None:
+        return node.end_content
     if node.type == "If":
-        return generate_end_id(node) + node_surround(node)[0] + "\"" + "End If" + "\"" + node_surround(node)[1]
+        node.end_content = generate_end_id(node) + node_surround(node)[0] + "\"" + "End If" + "\"" + node_surround(node)[1]
     if node.type == "FuncDef":
-        return generate_end_id(node) + node_surround(node)[0] + "\"" + "End Function" + "\"" + node_surround(node)[1]
+        node.end_content = generate_end_id(node) + node_surround(node)[0] + "\"" + "End Function" + "\"" + node_surround(node)[1]
     if node.type == "While":
-        return generate_end_id(node) + node_surround(node)[0] + "\"" + "End While" + "\"" + node_surround(node)[1]
+        node.end_content = generate_end_id(node) + node_surround(node)[0] + "\"" + "End While" + "\"" + node_surround(node)[1]
     if node.type == "For":
-        return generate_end_id(node) + node_surround(node)[0] + "\"" + "End For" + "\"" + node_surround(node)[1]
+        node.end_content = generate_end_id(node) + node_surround(node)[0] + "\"" + "End For" + "\"" + node_surround(node)[1]
     if node.type == "DoWhile_Do":
-        return node.children[-1].content
+        node.end_content = node.children[-1].content
+    return node.end_content
 
 def node_type(node):
     if is_if_branch(node) or is_root(node):
