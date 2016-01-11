@@ -3,9 +3,12 @@
 import sys, os, ntpath
 from pycparser.pycparser import parse_file, c_parser, mermaid_generator
 
-have_end_types = ("If", "FuncDef", "while")
+have_end_types = ("If", "FuncDef", "while", "for", "DoWhile_Do")
 have_multi_cond_types = ("If")
 multi_cond_subtypes = ("If-True", "If-False")
+connect_to_start_types = ("continue")
+connect_to_end_types = ("break")
+force_function_end_types = ("return")
 
 def generate_end_id(node):
     if node.type == "If":
@@ -14,6 +17,10 @@ def generate_end_id(node):
         return node_id(node).replace("FuncDef", "EndFuncDef")
     if node.type == "While":
         return node_id(node).replace("While", "EndWhile")
+    if node.type == "For":
+        return node_id(node).replace("For", "EndFor")
+    if node.type == "DoWhile_Do":
+        return node_id(node.children[-1])
 
 def generate_end_node_content(node):
     if node.type == "If":
@@ -22,16 +29,16 @@ def generate_end_node_content(node):
         return generate_end_id(node) + node_surround(node)[0] + "\"" + "End Function" + "\"" + node_surround(node)[1]
     if node.type == "While":
         return generate_end_id(node) + node_surround(node)[0] + "\"" + "End While" + "\"" + node_surround(node)[1]
-
-connect_to_start_types = ("continue")
-connect_to_end_types = ("break")
-force_function_end_types = ("return")
+    if node.type == "For":
+        return generate_end_id(node) + node_surround(node)[0] + "\"" + "End For" + "\"" + node_surround(node)[1]
+    if node.type == "DoWhile_Do":
+        return node.children[-1].content
 
 def node_type(node):
     if is_if_branch(node) or is_root(node):
         return node.type
     else:
-        return node.content.strip().split('_')[1]
+        return '_'.join(node.content.strip().split('_')[1:-1])
 
 def node_id(node):
     return node.content.split('[')[0].split('(')[0].split('{')[0]
@@ -125,6 +132,7 @@ def search_last_call(node):
     return last_call
 
 def print_links(tree, last_node, call_stack=[], function_end=None):
+    print("%% Got node type: "+str(node_type(tree)))
     if node_type(tree) in have_end_types:
         call_stack.append(tree)
 
@@ -164,9 +172,22 @@ def print_links(tree, last_node, call_stack=[], function_end=None):
     elif node_type(tree) == "While":
         print("%% While start")
         iterative_print_links(tree, last_node, call_stack=call_stack)
-        while_last_call_node = search_last_call(tree)
-        link(while_last_call_node, generate_end_id(tree))
+        link(search_last_call(tree), generate_end_id(tree))
         print("%% While end")
+        return
+
+    elif node_type(tree) == "For":
+        print("%% For start")
+        iterative_print_links(tree, last_node, call_stack=call_stack)
+        link(search_last_call(tree), generate_end_id(tree))
+        print("%% For end")
+        return
+
+    elif node_type(tree) == "DoWhile_Do":
+        print("%% DoWhile start")
+        iterative_print_links(tree, last_node, call_stack=call_stack)
+        link(generate_end_id(tree), tree)
+        print("%% DoWhile end")
         return
 
     # normal

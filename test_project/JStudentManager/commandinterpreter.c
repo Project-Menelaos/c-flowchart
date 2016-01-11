@@ -53,7 +53,7 @@ cmd_dict commands[] = {
 };
 
 //static bool mute = false;
-
+/*
 bool is_arg_present(char *arg) {
 	if (arg == NULL) return false;
 	while (*arg != 0 && isspace(*arg)) arg++;
@@ -88,7 +88,7 @@ int quit(char *arg) {
     sqlite_save(NULL);
 	return EXIT_FAILURE;
 }
-
+*/
 int runcommand(char *s)
 {
 	char temp[20];
