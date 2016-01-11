@@ -78,7 +78,12 @@ def node_type(node):
 
 def node_id(node):
     if node == None: return "None"
-    return node.content.split('[')[0].split('(')[0].split('{')[0]
+    if type(node) is str:
+        string = node
+    else:
+        string = node.content
+    return string.split('[')[0].split('(')[0].split('{')[0]
+
 
 def node_surround(node):
     try:
