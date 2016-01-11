@@ -3,6 +3,20 @@
 import sys, os, ntpath
 from pycparser.pycparser import parse_file, c_parser, mermaid_generator
 
+have_end_types = ("If", "FuncDef")
+
+def generate_end_id(node):
+    if node.type == "If":
+        return node_id(node).replace("If", "EndIf")
+    if node.type == "FuncDef":
+        return node_id(node).replace("FuncDef", "EndFuncDef")
+
+def generate_end_node_content(node):
+    if node.type == "If":
+        return generate_end_id(node) + node_surround(node)[0] + "\"" + "End If" + "\"" + node_surround(node)[1]
+    if node.type == "FuncDef":
+        return generate_end_id(node) + node_surround(node)[0] + "\"" + "End Function" + "\"" + node_surround(node)[1]
+
 def node_type(node):
     if is_if_branch(node) or is_root(node):
         return node.type
@@ -11,6 +25,12 @@ def node_type(node):
 
 def node_id(node):
     return node.content.split('[')[0].split('(')[0].split('{')[0]
+
+def node_surround(node):
+    try:
+        return node.surround
+    except:
+        return None
 
 def node_str(node):
     return node.content[len(node_id(node))+2:-3].strip()
@@ -62,14 +82,34 @@ def print_nodes(tree):
     s = str(tree.content).strip()
     if not is_if_branch(tree) and not is_root(tree):
         print(s)
-    if tree.type == "If":
-        print(node_id(tree).replace("If", "EndIf") + "[End If]")
+    if tree.type in have_end_types:
+        print(generate_end_node_content(tree))
     for i in tree.children:
         print_nodes(i)
 
-def generate_if_end_id(node):
-    if node.type == "If":
-        return node_id(node).replace("If", "EndIf")
+def iterative_print_links(tree, last_node):
+    if len(tree.children) > 0:
+        # print("%% Iterate over normal stmt")
+        link(tree, tree.children[0])
+        for i in range(1, len(tree.children)):
+            if tree.children[i - 1].type not in have_end_types:
+                link(tree.children[i - 1], tree.children[i])
+            else:
+                link(generate_end_id(tree.children[i - 1]), tree.children[i])
+        for i in tree.children:
+            print_links(i, tree)
+
+def search_last_call(node):
+    last_call = node
+    # if last_call.type in have_end_types:
+    #     return generate_end_id(last_call)
+    while len(last_call.children) > 0:
+        if last_call.children[-1].type in have_end_types:
+            last_call = generate_end_id(last_call.children[-1])
+            break
+        else:
+            last_call = last_call.children[-1]
+    return last_call
 
 def print_links(tree, last_node, force_connected_end_to=None):
     if node_type(tree) == "root":
@@ -79,30 +119,21 @@ def print_links(tree, last_node, force_connected_end_to=None):
 
     elif node_type(tree) == "FuncDef" and len(tree.children) > 0:
         print("%% FuncDef start")
-        # let them happen as normal!
-        # link(tree, tree.children[0])
-        # for i in range(1, len(tree.children)):
-        #     if tree.children[i - 1].type not in ("If"):
-        #         link(tree.children[i - 1], tree.children[i])
-        # for i in tree.children:
-        #     print_links(i, tree)
-        # print("%% FuncDef end")
-        # return
+        iterative_print_links(tree, last_node)
+        func_last_call_node = search_last_call(tree)
+        link(func_last_call_node, generate_end_id(tree))
+        print("%% FuncDef end")
+        return
 
     elif node_type(tree) == "If":
         # tree.if_end = []
-        if_end_node_id = generate_if_end_id(tree)
+        if_end_node_id = generate_end_id(tree)
         # If-True
         print('%% If-True')
         link(tree, tree.children[0].children[0], "True")
         for i in tree.children[0].children:
             print_links(i, tree)
-            # if a is mermaid_generator.MermaidGenerator.H:
-            #     tree.if_end.append(a)
-        if_true_end_node = tree.children[0]
-        while len(if_true_end_node.children) > 0:
-            if_true_end_node = if_true_end_node.children[-1]
-
+        if_true_end_node = search_last_call(tree.children[0])
         link(if_true_end_node, if_end_node_id)
 
         # If-False
@@ -111,10 +142,7 @@ def print_links(tree, last_node, force_connected_end_to=None):
             link(tree, tree.children[1].children[0], "False")
             for i in tree.children[1].children:
                 print_links(i, tree)
-
-            if_false_end_node = tree.children[1]
-            while len(if_false_end_node.children) > 0:
-                if_false_end_node = if_false_end_node.children[-1]
+            if_false_end_node = search_last_call(tree.children[1])
             link(if_false_end_node, if_end_node_id)
         else:   # no else
             link(tree, if_end_node_id, "False")
@@ -122,16 +150,7 @@ def print_links(tree, last_node, force_connected_end_to=None):
         return
 
     # normal
-    if len(tree.children) > 0:
-        print("%% Iterate over normal stmt")
-        link(tree, tree.children[0])
-        for i in range(1, len(tree.children)):
-            if tree.children[i - 1].type not in ("If"):
-                link(tree.children[i - 1], tree.children[i])
-            else:
-                link(generate_if_end_id(tree.children[i - 1]), tree.children[i])
-        for i in tree.children:
-            print_links(i, tree)
+    iterative_print_links(tree, last_node)
 
 
 def print_mermaid_graph(tree):
