@@ -43,6 +43,8 @@ def generate_end_node_content(node):
 def node_type(node):
     if is_if_branch(node) or is_root(node):
         return node.type
+    elif type(node) is str:
+        return '_'.join(node.strip().split('_')[1:-1])
     else:
         return '_'.join(node.content.strip().split('_')[1:-1])
 
@@ -59,16 +61,25 @@ def node_str(node):
     return node.content[len(node_id(node))+2:-3].strip()
 
 def is_if_true_branch(node):
-    return (node.type == "If-True")
+    try:
+        return (node.type == "If-True")
+    except:
+        return False
 
 def is_if_false_branch(node):
-    return (node.type == "If-False")
+    try:
+        return (node.type == "If-False")
+    except:
+        return False
 
 def is_if_branch(node):
     return (is_if_false_branch(node) or is_if_true_branch(node))
 
 def is_root(node):
-    return (node.type == "root")
+    try:
+        return (node.type == "root")
+    except:
+        return False
 
 def generate_call_tree(filename):
     """ Simply use the c_generator module to emit a parsed AST.
