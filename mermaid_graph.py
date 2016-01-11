@@ -10,10 +10,10 @@ def node_type(node):
         return node.content.strip().split('_')[1]
 
 def node_id(node):
-    return node.content.split('[')[0]
+    return node.content.split('[')[0].split('(')[0].split('{')[0]
 
 def node_str(node):
-    return node.content[len(node.content.split('[')[0])+2:-3].strip()
+    return node.content[len(node_id(node))+2:-3].strip()
 
 def is_if_true_branch(node):
     return (node_str(node) == "If-True")
@@ -60,7 +60,11 @@ def print_nodes(tree):
 def print_links(tree, last_node):
     if node_type(tree) == "FuncDef" and len(tree.children) > 0:
         print("%% FuncDef start")
+        #print("subgraph " + node_id(tree))
         link(tree, tree.children[0])
+        for i in tree.children:
+            print_links(i, tree)
+        #print("end")
     # print(r"%%Type: " + node_type(tree) + " branch?" + str(is_if_branch(tree)) + " root?" + str(is_root(tree)))
     # else:
     if node_type(tree) == "If":
@@ -69,12 +73,27 @@ def print_links(tree, last_node):
             link(tree, tree.children[0].children[0], cond="True")
             for i in tree.children[0].children:
                 print_links(i, tree)
-            #finish_node_true = print_links(tree.children[0], tree)
+
+            endnode = tree.children[0]
+            while(len(endnode.children) > 0):
+                endnode = endnode.children[-1]
+            tree.if_end = [endnode]
+
         if (len(tree.children) > 1):
             link(tree, tree.children[1].children[0], cond="False")
             for i in tree.children[1].children:
                 print_links(i, tree)
+
+            endnode = tree.children[1]
+            while(len(endnode.children) > 0):
+                endnode = endnode.children[-1]
+            tree.if_end.append(endnode)
+
     else:
+        if node_type(last_node) == "If" and hasattr(last_node, 'if_end'):
+            for i in last_node.if_end:
+                link(i, tree)
+            print("%% If end")
         if len(tree.children) == 0:
             pass
         elif len(tree.children) == 1:
