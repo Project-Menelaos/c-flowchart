@@ -29,7 +29,7 @@ def call_stack_pop(node=None):
             return call_stack.pop()
 
 def generate_end_id(node):
-    if node == None: return
+    if node == None: return ""
     if node.end_id != None:
         return node.end_id
     if node.type == "If":
